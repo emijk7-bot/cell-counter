@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>세포 카운팅 및 분주 통합 계산기 (Cell Lab Calculator)</title>
+  <!-- Tailwind CSS 로드 -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter & Noto Sans KR -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Noto Sans KR"', 'Inter', 'sans-serif'],
+            mono: ['Inter', 'monospace'],
+          },
+          colors: {
+            navy: {
+              800: '#162b4d',
+              900: '#0f1e36',
+            },
+            mint: {
+              50: '#ecfdf5',
+              100: '#d1fae5',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    body {
+      font-family: 'Noto Sans KR', 'Inter', sans-serif;
+      background-color: #f1f5f9;
+      color: #0f172a;
+    }
+    /* 숫자 입력창 화살표 스타일 정돈 */
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+      opacity: 1;
+    }
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+    /* 부드러운 아코디언 전환 */
+    .accordion-content {
+      transition: max-height 0.28s ease-out, opacity 0.25s ease;
+    }
+  </style>
+</head>
+<body class="min-h-screen antialiased selection:bg-emerald-200 selection:text-emerald-950">
+
+  <!-- 상단 네비게이션 헤더 -->
+  <header class="bg-navy-900 text-white shadow-md sticky top-0 z-30 border-b border-slate-700/60">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-emerald-400 shrink-0">
+          <!-- 현미경/세포 아이콘 SVG -->
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="9" />
+            <circle cx="9.5" cy="10" r="1.5" fill="currentColor" />
+            <circle cx="14.5" cy="11" r="1.2" fill="currentColor" />
+            <circle cx="11.5" cy="15" r="1.7" fill="currentColor" />
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-lg sm:text-xl font-bold tracking-tight text-white flex items-center gap-2">
+            세포 카운팅 &amp; 분주 통합 계산기
+            <span class="hidden md:inline-block text-xs font-medium bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 px-2.5 py-0.5 rounded-full">
+              Cell Lab Pro
+            </span>
+          </h1>
+          <p class="text-xs sm:text-sm text-slate-300">혈구계산판 농도 산출부터 배양 용기별 자동 분주 레시피 계산</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 self-start sm:self-auto">
+        <button id="resetBtn" type="button" class="px-3.5 py-2 text-xs sm:text-sm font-medium rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 transition flex items-center gap-1.5">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          기본값 초기화
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 메인 콘텐츠 컨테이너 -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+      <!-- 좌측 영역 (7컬럼): 1단계 세포 카운팅 + 2단계 목표 분주 조건 -->
+      <div class="lg:col-span-7 space-y-6">
+
+        <!-- [섹션 1] 상세 세포 카운팅 (Cell Counting) 입력 -->
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200/90 overflow-hidden">
+          <div class="bg-navy-800 px-5 py-4 flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-2.5">
+              <span class="w-7 h-7 rounded-lg bg-emerald-500 text-white font-bold text-sm flex items-center justify-center shadow-sm">1</span>
+              <div>
+                <h2 class="text-base sm:text-lg font-bold text-white">상세 세포 카운팅 (Cell Counting)</h2>
+                <p class="text-xs text-slate-300">혈구계산판 계수 결과와 희석·회수 조건을 입력하세요</p>
+              </div>
+            </div>
+            <!-- 칸별 개별 카운팅 아코디언 토글 버튼 -->
+            <button id="toggleGridBtn" type="button" class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-700/80 hover:bg-slate-600 text-emerald-300 border border-slate-500/60 transition flex items-center gap-1.5">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+              </svg>
+              <span id="toggleGridLabel">칸별 개별 입력 (1~8칸) 열기</span>
+            </button>
+          </div>
+
+          <!-- 칸별 개별 카운팅 입력 패널 (아코디언) -->
+          <div id="gridCounterPanel" class="hidden bg-slate-50 border-b border-slate-200 px-5 py-4">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+              <div>
+                <h3 class="text-sm font-bold text-slate-800">혈구계산판 칸별 세포 수 직접 입력 (최대 8칸)</h3>
+                <p class="text-xs text-slate-500">숫자를 입력한 칸만 자동으로 카운트되어 아래 [총 세포 수]와 [칸 수]에 즉시 합산됩니다.</p>
+              </div>
+              <button id="clearGridBtn" type="button" class="px-2.5 py-1 text-xs font-medium text-slate-600 hover:text-rose-600 bg-white border border-slate-300 rounded-lg shadow-2xs transition">
+                칸별 입력 비우기
+              </button>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              <div>
+                <label class="block text-xs font-medium text-slate-600 mb-1">1번 칸</label>
+                <input type="number" min="0" step="1" placeholder="0" data-grid-idx="1" class="grid-cell-input w-full px-3 py-2 text-sm font-semibold text-right bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-600 mb-1">2번 칸</label>
+                <input type="number" min="0" step="1" placeholder="0" data-grid-idx="2" class="grid-cell-input w-full px-3 py-2 text-sm font-semibold text-right bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-600 mb-1">3번 칸</label>
+                <input type="number" min="0" step="1" placeholder="0" data-grid-idx="3" class="grid-cell-input w-full px-3 py-2 text-sm font-semibold text-right bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-600 mb-1">4번 칸</label>
+                <input type="number" min="0" step="1" placeholder="0" data-grid-idx="4" class="grid-cell-input w-full px-3 py-2 text-sm font-semibold text-right bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-600 mb-1">5번 칸 (선택)</label>
+                <input type="number" min="0" step="1" placeholder="-" data-grid-idx="5" class="grid-cell-input w-full px-3 py-2 text-sm font-semibold text-right bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-600 mb-1">6번 칸 (선택)</label>
+                <input type="number" min="0" step="1" placeholder="-" data-grid-idx="6" class="grid-cell-input w-full px-3 py-2 text-sm font-semibold text-right bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-600 mb-1">7번 칸 (선택)</label>
+                <input type="number" min="0" step="1" placeholder="-" data-grid-idx="7" class="grid-cell-input w-full px-3 py-2 text-sm font-semibold text-right bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-600 mb-1">8번 칸 (선택)</label>
+                <input type="number" min="0" step="1" placeholder="-" data-grid-idx="8" class="grid-cell-input w-full px-3 py-2 text-sm font-semibold text-right bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+            </div>
+            <div class="mt-2.5 text-xs text-emerald-700 font-medium flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
+              <span>칸별 합산 상태:</span>
+              <span id="gridSummaryText">입력된 칸 없음 (직접 입력 모드)</span>
+            </div>
+          </div>
+
+          <!-- 7개 핵심 카운팅 입력 폼 -->
+          <div class="p-5 space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <!-- 1. 카운팅한 총 세포 수 -->
+              <div class="bg-amber-50/60 border border-amber-200/80 rounded-xl p-3.5">
+                <div class="flex items-center justify-between mb-1">
+                  <label for="totalCountedCells" class="text-sm font-bold text-slate-800">1) 카운팅한 총 세포 수</label>
+                  <span class="text-xs font-semibold text-slate-500 bg-white px-2 py-0.5 rounded-md border border-slate-200">cells</span>
+                </div>
+                <input id="totalCountedCells" type="number" min="0" step="1" value="216" class="w-full px-3.5 py-2 text-base font-bold text-right tabular-nums bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                <p class="mt-1 text-xs text-slate-500">카운팅한 전체 칸의 세포 수 합계</p>
+              </div>
+
+              <!-- 2. 카운팅한 칸 수 -->
+              <div class="bg-amber-50/60 border border-amber-200/80 rounded-xl p-3.5">
+                <div class="flex items-center justify-between mb-1">
+                  <label for="countedSquares" class="text-sm font-bold text-slate-800">2) 카운팅한 칸 수</label>
+                  <span class="text-xs font-semibold text-slate-500 bg-white px-2 py-0.5 rounded-md border border-slate-200">칸</span>
+                </div>
+                <input id="countedSquares" type="number" min="1" step="1" value="4" class="w-full px-3.5 py-2 text-base font-bold text-right tabular-nums bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                <p class="mt-1 text-xs text-slate-500">실제로 계수한 큰 칸 수 (보통 4칸)</p>
+              </div>
+
+              <!-- 3. 희석 배수 -->
+              <div class="bg-slate-50 border border-slate-200/90 rounded-xl p-3.5">
+                <div class="flex items-center justify-between mb-1">
+                  <label for="dilutionFactor" class="text-sm font-bold text-slate-800">3) 희석 배수</label>
+                  <span class="text-xs font-semibold text-slate-500 bg-white px-2 py-0.5 rounded-md border border-slate-200">배</span>
+                </div>
+                <input id="dilutionFactor" type="number" min="0.1" step="0.5" value="4" class="w-full px-3.5 py-2 text-base font-bold text-right tabular-nums bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                <p class="mt-1 text-xs text-slate-500">세포 현탁액과 염색액 혼합비에 맞게 입력</p>
+              </div>
+
+              <!-- 4. 총 현탁액 부피 -->
+              <div class="bg-slate-50 border border-slate-200/90 rounded-xl p-3.5">
+                <div class="flex items-center justify-between mb-1">
+                  <label for="totalSuspensionVol" class="text-sm font-bold text-slate-800">4) 총 현탁액 부피</label>
+                  <span class="text-xs font-semibold text-slate-500 bg-white px-2 py-0.5 rounded-md border border-slate-200">mL</span>
+                </div>
+                <input id="totalSuspensionVol" type="number" min="0.01" step="0.5" value="15" class="w-full px-3.5 py-2 text-base font-bold text-right tabular-nums bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                <p class="mt-1 text-xs text-slate-500">계수 후 실제 분주에 사용할 세포 현탁액 총량</p>
+              </div>
+
+              <!-- 5. 생존율 (Viability) -->
+              <div class="bg-slate-50 border border-slate-200/90 rounded-xl p-3.5">
+                <div class="flex items-center justify-between mb-1">
+                  <label for="viabilityPct" class="text-sm font-bold text-slate-800">5) 생존율 (Viability)</label>
+                  <span class="text-xs font-semibold text-slate-500 bg-white px-2 py-0.5 rounded-md border border-slate-200">%</span>
+                </div>
+                <input id="viabilityPct" type="number" min="0" max="100" step="0.1" value="100" class="w-full px-3.5 py-2 text-base font-bold text-right tabular-nums bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                <p class="mt-1 text-xs text-slate-500">100% = 1.0, 95% = 0.95 (생존 세포 비율 반영)</p>
+              </div>
+
+              <!-- 6. 계수판 환산계수 -->
+              <div class="bg-slate-50 border border-slate-200/90 rounded-xl p-3.5">
+                <div class="flex items-center justify-between mb-1">
+                  <label for="hemocytometerFactor" class="text-sm font-bold text-slate-800">6) 계수판 환산계수</label>
+                  <span class="text-xs font-semibold text-slate-500 bg-white px-2 py-0.5 rounded-md border border-slate-200">cells/mL</span>
+                </div>
+                <input id="hemocytometerFactor" type="number" min="1" step="1000" value="10000" class="w-full px-3.5 py-2 text-base font-bold text-right tabular-nums bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                <p class="mt-1 text-xs text-slate-500">일반 혈구계산판 큰 칸 기준 (10,000 = 10⁴)</p>
+              </div>
+
+              <!-- 7. 회수율 (Recovery) -->
+              <div class="sm:col-span-2 bg-slate-50 border border-slate-200/90 rounded-xl p-3.5">
+                <div class="flex items-center justify-between mb-1">
+                  <label for="recoveryPct" class="text-sm font-bold text-slate-800">7) 회수율 (Recovery)</label>
+                  <span class="text-xs font-semibold text-slate-500 bg-white px-2 py-0.5 rounded-md border border-slate-200">%</span>
+                </div>
+                <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                  <input id="recoveryPct" type="number" min="1" max="100" step="1" value="100" class="w-full sm:w-44 px-3.5 py-2 text-base font-bold text-right tabular-nums bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                  <p class="text-xs text-slate-500">원심분리·튜브 이송 중 손실 반영 (손실 없으면 100%)</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- 카운팅 자동 산출 요약 바 -->
+            <div class="bg-emerald-50/90 border border-emerald-200 rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div class="bg-white/90 rounded-xl p-3 border border-emerald-100">
+                <div class="text-xs font-medium text-slate-500">칸당 평균 세포 수</div>
+                <div class="mt-1 text-lg font-extrabold text-slate-800 tabular-nums">
+                  <span id="avgCellsPerSquare">54.0</span> <span class="text-xs font-semibold text-slate-500">cells/칸</span>
+                </div>
+              </div>
+              <div class="bg-white/90 rounded-xl p-3 border border-emerald-100">
+                <div class="text-xs font-medium text-slate-500">측정 세포 농도 (Stock)</div>
+                <div class="mt-1 text-lg font-extrabold text-emerald-700 tabular-nums">
+                  <span id="measuredConcentration">2,160,000</span> <span class="text-xs font-semibold text-slate-500">cells/mL</span>
+                </div>
+                <div id="measuredConcSci" class="text-[11px] font-medium text-emerald-600 tabular-nums">2.16 × 10⁶ cells/mL</div>
+              </div>
+              <div class="bg-white/90 rounded-xl p-3 border border-emerald-100">
+                <div class="text-xs font-medium text-slate-500">유효 총 보유 세포 수</div>
+                <div class="mt-1 text-lg font-extrabold text-navy-900 tabular-nums">
+                  <span id="validTotalCells">32,400,000</span> <span class="text-xs font-semibold text-slate-500">cells</span>
+                </div>
+                <div id="validTotalCellsSci" class="text-[11px] font-medium text-slate-500 tabular-nums">3.24 × 10⁷ cells</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- [섹션 2] 목표 분주 조건 및 배양 용기 프리셋 -->
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200/90 overflow-hidden">
+          <div class="bg-navy-800 px-5 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <span class="w-7 h-7 rounded-lg bg-emerald-500 text-white font-bold text-sm flex items-center justify-center shadow-sm">2</span>
+              <div>
+                <h2 class="text-base sm:text-lg font-bold text-white">목표 분주 조건 및 용기 프리셋</h2>
+                <p class="text-xs text-slate-300">원하는 배양 용기를 클릭하면 권장 세포 수와 부피가 자동 세팅됩니다</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="p-5 space-y-5">
+            <!-- 원클릭 프리셋 버튼 그룹 -->
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-500">원클릭 배양 용기 프리셋 (표준 권장값 자동 입력)</span>
+                <span id="activePresetBadge" class="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                  선택됨: 150mm 디쉬 (15파이)
+                </span>
+              </div>
+
+              <!-- 원형 배양 접시 (Culture Dish) -->
+              <div class="mb-2.5">
+                <div class="text-[11px] font-semibold text-slate-400 mb-1.5">원형 배양 접시 (Culture Dish)</div>
+                <div id="dishPresetGroup" class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <!-- JS로 동적 생성 -->
+                </div>
+              </div>
+
+              <!-- 멀티웰 플레이트 & 플라스크 -->
+              <div>
+                <div class="text-[11px] font-semibold text-slate-400 mb-1.5">멀티웰 플레이트 &amp; 배양 플라스크</div>
+                <div id="platePresetGroup" class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  <!-- JS로 동적 생성 -->
+                </div>
+              </div>
+            </div>
+
+            <hr class="border-slate-200" />
+
+            <!-- 분주 세부 수치 입력 필드 -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <!-- 분주할 용기 개수 -->
+              <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
+                <div class="flex items-center justify-between mb-1">
+                  <label for="vesselCount" class="text-sm font-bold text-slate-800">분주할 용기 (디쉬/웰) 개수</label>
+                  <span class="text-xs font-semibold text-slate-500 bg-white px-2 py-0.5 rounded-md border border-slate-200">개</span>
+                </div>
+                <input id="vesselCount" type="number" min="1" step="1" value="3" class="w-full px-3.5 py-2 text-base font-bold text-right tabular-nums bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                <p class="mt-1 text-xs text-slate-500">실제로 세포를 심을 디쉬 또는 웰 수량</p>
+              </div>
+
+              <!-- 개당 목표 세포 수 -->
+              <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
+                <div class="flex items-center justify-between mb-1">
+                  <label for="targetCellsPerVessel" class="text-sm font-bold text-slate-800">개당 목표 세포 수</label>
+                  <span class="text-xs font-semibold text-slate-500 bg-white px-2 py-0.5 rounded-md border border-slate-200">cells</span>
+                </div>
+                <input id="targetCellsPerVessel" type="number" min="1" step="10000" value="2500000" class="w-full px-3.5 py-2 text-base font-bold text-right tabular-nums bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                <p id="targetCellsSciHelper" class="mt-1 text-xs font-medium text-emerald-700">2.50 × 10⁶ cells / 개</p>
+              </div>
+
+              <!-- 개당 최종 배양액 부피 -->
+              <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
+                <div class="flex items-center justify-between mb-1">
+                  <label for="finalVolPerVessel" class="text-sm font-bold text-slate-800">개당 최종 배양액 부피</label>
+                  <span class="text-xs font-semibold text-slate-500 bg-white px-2 py-0.5 rounded-md border border-slate-200">mL</span>
+                </div>
+                <input id="finalVolPerVessel" type="number" min="0.05" step="0.5" value="20" class="w-full px-3.5 py-2 text-base font-bold text-right tabular-nums bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                <p class="mt-1 text-xs text-slate-500">용기 1개당 들어갈 전체 배양액 부피</p>
+              </div>
+
+              <!-- 여유분 / Dead Volume -->
+              <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
+                <div class="flex items-center justify-between mb-1">
+                  <label for="deadVolumePct" class="text-sm font-bold text-slate-800">여유분 (Dead Volume 보정)</label>
+                  <span class="text-xs font-semibold text-slate-500 bg-white px-2 py-0.5 rounded-md border border-slate-200">%</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <input id="deadVolumePct" type="number" min="0" max="100" step="5" value="10" class="w-full px-3.5 py-2 text-base font-bold text-right tabular-nums bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                  <div class="flex gap-1 shrink-0">
+                    <button type="button" data-buffer="0" class="buffer-quick-btn px-2 py-2 text-xs font-semibold rounded-lg bg-white border border-slate-300 hover:bg-slate-100 text-slate-700">0%</button>
+                    <button type="button" data-buffer="10" class="buffer-quick-btn px-2 py-2 text-xs font-semibold rounded-lg bg-emerald-600 border border-emerald-600 text-white">10%</button>
+                    <button type="button" data-buffer="15" class="buffer-quick-btn px-2 py-2 text-xs font-semibold rounded-lg bg-white border border-slate-300 hover:bg-slate-100 text-slate-700">15%</button>
+                  </div>
+                </div>
+                <p class="mt-1 text-xs text-slate-500">피펫팅 오차 방지를 위한 여유 혼합액 비율</p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- 우측 영역 (5컬럼): 3단계 실시간 계산 결과 대시보드 (데스크톱 Sticky) -->
+      <div class="lg:col-span-5 lg:sticky lg:top-24 space-y-5">
+
+        <section class="bg-white rounded-2xl shadow-md border border-slate-200 overflow-hidden">
+          <div class="bg-navy-900 px-5 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <span class="w-7 h-7 rounded-lg bg-emerald-500 text-white font-bold text-sm flex items-center justify-center shadow-sm">3</span>
+              <div>
+                <h2 class="text-base sm:text-lg font-bold text-white">자동 분주 레시피 계산 결과</h2>
+                <p class="text-xs text-slate-300">입력값 변경 즉시 실시간으로 업데이트됩니다</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="p-5 space-y-4">
+            <!-- 실시간 상태 진단 배너 -->
+            <div id="statusBanner" class="rounded-2xl p-3.5 border flex items-start gap-3 bg-emerald-50 border-emerald-300 text-emerald-900">
+              <div id="statusIcon" class="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
+                ✔
+              </div>
+              <div class="text-sm">
+                <div id="statusTitle" class="font-bold">정상: 바로 혼합 후 분주 가능합니다</div>
+                <div id="statusDesc" class="text-xs mt-0.5 opacity-90">보유한 유효 세포 수와 액량이 충분합니다.</div>
+              </div>
+            </div>
+
+            <!-- 핵심 강조 카드 ①: 취해야 할 원본 세포액 (Stock) 부피 -->
+            <div class="rounded-2xl bg-gradient-to-br from-navy-900 to-navy-800 text-white p-4 sm:p-5 shadow-sm border border-slate-700">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold uppercase tracking-wider text-emerald-300">① 취해야 할 원본 세포액 (Stock)</span>
+                <span class="text-xs bg-white/10 text-slate-200 px-2.5 py-0.5 rounded-full">세포 현탁액</span>
+              </div>
+              <div class="mt-2 flex flex-wrap items-baseline justify-between gap-2">
+                <div class="text-3xl sm:text-4xl font-extrabold tracking-tight text-white tabular-nums">
+                  <span id="outStockMl">3.82</span> <span class="text-lg font-semibold text-emerald-300">mL</span>
+                </div>
+                <div class="text-lg sm:text-xl font-bold text-emerald-300 bg-emerald-500/15 border border-emerald-400/30 px-3 py-1 rounded-xl tabular-nums">
+                  = <span id="outStockUl">3,819</span> <span class="text-sm font-semibold">µL</span>
+                </div>
+              </div>
+              <p class="mt-2 text-xs text-slate-300">계수한 원본 세포 현탁액에서 피펫으로 취할 양입니다.</p>
+            </div>
+
+            <!-- 핵심 강조 카드 ② & ③: 새 배양액 부피 & 총 혼합액 부피 -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <!-- ② 추가할 새 배양액 (Media) -->
+              <div class="rounded-2xl bg-emerald-50 border-2 border-emerald-500/40 p-4">
+                <div class="text-xs font-bold text-emerald-800">② 추가할 새 배양액 (Media)</div>
+                <div class="mt-1.5 text-2xl sm:text-3xl font-extrabold text-emerald-900 tabular-nums">
+                  <span id="outMediaMl">62.18</span> <span class="text-base font-bold text-emerald-700">mL</span>
+                </div>
+                <div class="mt-1 text-[11px] font-medium text-emerald-700">희석용 신선 배지 부피</div>
+              </div>
+
+              <!-- ③ 총 만들어야 할 혼합액 부피 -->
+              <div class="rounded-2xl bg-slate-100 border border-slate-300/80 p-4">
+                <div class="text-xs font-bold text-slate-700">③ 총 혼합액 부피 (여유분 포함)</div>
+                <div class="mt-1.5 text-2xl sm:text-3xl font-extrabold text-slate-900 tabular-nums">
+                  <span id="outTotalMixMl">66.00</span> <span class="text-base font-bold text-slate-600">mL</span>
+                </div>
+                <div class="mt-1 text-[11px] font-medium text-slate-500">Stock + 새 배양액 합계</div>
+              </div>
+            </div>
+
+            <!-- 실험실 작업 지시문 박스 + 원클릭 복사 -->
+            <div class="rounded-2xl bg-slate-900 text-slate-100 p-4 border border-slate-700 space-y-2.5">
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                  실험실 작업 지시문 (벤치 가이드)
+                </span>
+                <button id="copyInstructionBtn" type="button" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition flex items-center gap-1 shadow-xs">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                  <span id="copyBtnText">지시문 복사</span>
+                </button>
+              </div>
+              <p id="labInstructionText" class="text-sm leading-relaxed text-white bg-slate-800/90 rounded-xl p-3 border border-slate-700/80 font-medium">
+                튜브에 새 배양액 <strong class="text-emerald-300">62.18 mL</strong>를 먼저 넣고, 원본 세포액 <strong class="text-amber-300">3.82 mL (3,819 µL)</strong>를 넣어 잘 섞은 뒤 각 용기에 <strong class="text-sky-300">20.00 mL</strong>씩 분주하세요.
+              </p>
+            </div>
+
+            <!-- 상세 수치 요약 테이블 -->
+            <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 space-y-2.5 text-sm">
+              <div class="text-xs font-bold text-slate-500 uppercase tracking-wider pb-1 border-b border-slate-200">
+                상세 세포 수 및 잔여량 분석
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-slate-600">순수 필요 세포 수 (여유분 제외)</span>
+                <span id="outPureReqCells" class="font-bold text-slate-800 tabular-nums">7,500,000 cells</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-slate-600">총 필요 세포 수 (여유분 포함)</span>
+                <span id="outTotalReqCells" class="font-bold text-navy-900 tabular-nums">8,250,000 cells</span>
+              </div>
+              <div class="flex items-center justify-between pt-2 border-t border-slate-200/80">
+                <span class="text-slate-600">분주 후 남는 유효 세포 수</span>
+                <span id="outRemainingCells" class="font-bold text-emerald-700 tabular-nums">24,150,000 cells</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-slate-600">분주 후 남는 원본 현탁액 부피</span>
+                <span id="outRemainingVol" class="font-bold text-slate-800 tabular-nums">11.18 mL</span>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- 복사 완료 알림 토스트 -->
+  <div id="toastMessage" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 bg-navy-900 text-white px-4 py-3 rounded-xl shadow-lg border border-emerald-500/40 flex items-center gap-2.5 text-sm font-medium pointer-events-none">
+    <span class="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold">✔</span>
+    <span id="toastText">작업 지시문이 클립보드에 복사되었습니다.</span>
+  </div>
+
+  <script>
+    // =========================================================================
+    // 1. 배양 용기 프리셋 데이터 정의 (원형 디쉬, 멀티웰 플레이트, 플라스크)
+    // =========================================================================
+    const VESSEL_PRESETS = [
+      // 원형 배양 접시 (Culture Dish)
+      {
+        id: 'dish-150',
+        category: 'dish',
+        shortName: '150mm 디쉬 (15파이)',
+        subLabel: '원형 최대 · 20mL',
+        targetCells: 2500000,
+        finalVol: 20,
+        defaultCount: 3
+      },
+      {
+        id: 'dish-100',
+        category: 'dish',
+        shortName: '100mm 디쉬 (10파이)',
+        subLabel: '표준 디쉬 · 10mL',
+        targetCells: 1000000,
+        finalVol: 10,
+        defaultCount: 3
+      },
+      {
+        id: 'dish-60',
+        category: 'dish',
+        shortName: '60mm 디쉬 (6파이)',
+        subLabel: '중형 디쉬 · 4mL',
+        targetCells: 400000,
+        finalVol: 4,
+        defaultCount: 3
+      },
+      {
+        id: 'dish-35',
+        category: 'dish',
+        shortName: '35mm 디쉬 (3.5파이)',
+        subLabel: '소형 디쉬 · 2mL',
+        targetCells: 200000,
+        finalVol: 2,
+        defaultCount: 3
+      },
+      // 멀티웰 플레이트 & 플라스크
+      {
+        id: 'plate-6',
+        category: 'plate',
+        shortName: '6-well 플레이트',
+        subLabel: '3×10⁵ · 2mL/well',
+        targetCells: 300000,
+        finalVol: 2,
+        defaultCount: 6
+      },
+      {
+        id: 'plate-12',
+        category: 'plate',
+        shortName: '12-well 플레이트',
+        subLabel: '1×10⁵ · 1mL/well',
+        targetCells: 100000,
+        finalVol: 1,
+        defaultCount: 12
+      },
+      {
+        id: 'plate-24',
+        category: 'plate',
+        shortName: '24-well 플레이트',
+        subLabel: '5×10⁴ · 0.5mL/well',
+        targetCells: 50000,
+        finalVol: 0.5,
+        defaultCount: 24
+      },
+      {
+        id: 'plate-96',
+        category: 'plate',
+        shortName: '96-well 플레이트',
+        subLabel: '1×10⁴ · 0.1mL/well',
+        targetCells: 10000,
+        finalVol: 0.1,
+        defaultCount: 96
+      },
+      {
+        id: 'flask-t75',
+        category: 'plate',
+        shortName: 'T-75 플라스크',
+        subLabel: '1.5×10⁶ · 15mL',
+        targetCells: 1500000,
+        finalVol: 15,
+        defaultCount: 1
+      },
+      {
+        id: 'flask-t25',
+        category: 'plate',
+        shortName: 'T-25 플라스크',
+        subLabel: '5×10⁵ · 5mL',
+        targetCells: 500000,
+        finalVol: 5,
+        defaultCount: 1
+      }
+    ];
+
+    // 현재 선택된 프리셋 ID
+    let activePresetId = 'dish-150';
+
+    // =========================================================================
+    // 2. DOM 요소 참조
+    // =========================================================================
+    const inputs = {
+      totalCountedCells: document.getElementById('totalCountedCells'),
+      countedSquares: document.getElementById('countedSquares'),
+      dilutionFactor: document.getElementById('dilutionFactor'),
+      totalSuspensionVol: document.getElementById('totalSuspensionVol'),
+      viabilityPct: document.getElementById('viabilityPct'),
+      hemocytometerFactor: document.getElementById('hemocytometerFactor'),
+      recoveryPct: document.getElementById('recoveryPct'),
+      vesselCount: document.getElementById('vesselCount'),
+      targetCellsPerVessel: document.getElementById('targetCellsPerVessel'),
+      finalVolPerVessel: document.getElementById('finalVolPerVessel'),
+      deadVolumePct: document.getElementById('deadVolumePct'),
+    };
+
+    const outputs = {
+      avgCellsPerSquare: document.getElementById('avgCellsPerSquare'),
+      measuredConcentration: document.getElementById('measuredConcentration'),
+      measuredConcSci: document.getElementById('measuredConcSci'),
+      validTotalCells: document.getElementById('validTotalCells'),
+      validTotalCellsSci: document.getElementById('validTotalCellsSci'),
+      targetCellsSciHelper: document.getElementById('targetCellsSciHelper'),
+      outStockMl: document.getElementById('outStockMl'),
+      outStockUl: document.getElementById('outStockUl'),
+      outMediaMl: document.getElementById('outMediaMl'),
+      outTotalMixMl: document.getElementById('outTotalMixMl'),
+      outPureReqCells: document.getElementById('outPureReqCells'),
+      outTotalReqCells: document.getElementById('outTotalReqCells'),
+      outRemainingCells: document.getElementById('outRemainingCells'),
+      outRemainingVol: document.getElementById('outRemainingVol'),
+      labInstructionText: document.getElementById('labInstructionText'),
+      statusBanner: document.getElementById('statusBanner'),
+      statusIcon: document.getElementById('statusIcon'),
+      statusTitle: document.getElementById('statusTitle'),
+      statusDesc: document.getElementById('statusDesc'),
+      activePresetBadge: document.getElementById('activePresetBadge'),
+    };
+
+    // =========================================================================
+    // 3. 유틸리티 포맷 함수
+    // =========================================================================
+    function formatInt(num) {
+      if (!isFinite(num) || isNaN(num)) return '0';
+      return Math.round(num).toLocaleString('ko-KR');
+    }
+
+    function formatFloat(num, digits = 2) {
+      if (!isFinite(num) || isNaN(num)) return (0).toFixed(digits);
+      return Number(num).toLocaleString('ko-KR', {
+        minimumFractionDigits: digits,
+        maximumFractionDigits: digits
+      });
+    }
+
+    function formatScientific(num) {
+      if (!isFinite(num) || isNaN(num) || num <= 0) return '0';
+      const exp = Math.floor(Math.log10(num));
+      if (exp < 4) return formatInt(num);
+      const mantissa = (num / Math.pow(10, exp)).toFixed(2);
+      const superscripts = {
+        '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴',
+        '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹', '-': '⁻'
+      };
+      const expStr = String(exp).split('').map(ch => superscripts[ch] || ch).join('');
+      return `${mantissa} × 10${expStr}`;
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById('toastMessage');
+      const toastText = document.getElementById('toastText');
+      toastText.textContent = message;
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      toast.classList.add('translate-y-0', 'opacity-100');
+      clearTimeout(window.__toastTimer);
+      window.__toastTimer = setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('translate-y-20', 'opacity-0');
+      }, 2600);
+    }
+
+    // =========================================================================
+    // 4. 프리셋 버튼 렌더링 및 적용 로직
+    // =========================================================================
+    function renderPresetButtons() {
+      const dishContainer = document.getElementById('dishPresetGroup');
+      const plateContainer = document.getElementById('platePresetGroup');
+      dishContainer.innerHTML = '';
+      plateContainer.innerHTML = '';
+
+      VESSEL_PRESETS.forEach(preset => {
+        const isActive = preset.id === activePresetId;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.dataset.presetId = preset.id;
+        btn.className = isActive
+          ? 'text-left p-2.5 rounded-xl border-2 border-emerald-600 bg-emerald-50 text-emerald-950 shadow-2xs transition cursor-pointer'
+          : 'text-left p-2.5 rounded-xl border border-slate-200 bg-white hover:border-emerald-400 hover:bg-slate-50 text-slate-800 transition cursor-pointer';
+
+        btn.innerHTML = `
+          <div class="text-xs sm:text-[13px] font-bold leading-tight ${isActive ? 'text-emerald-900' : 'text-slate-800'}">${preset.shortName}</div>
+          <div class="text-[11px] mt-0.5 ${isActive ? 'text-emerald-700 font-semibold' : 'text-slate-500'}">${preset.subLabel}</div>
+        `;
+
+        btn.addEventListener('click', () => applyPreset(preset.id));
+
+        if (preset.category === 'dish') {
+          dishContainer.appendChild(btn);
+        } else {
+          plateContainer.appendChild(btn);
+        }
+      });
+    }
+
+    function applyPreset(presetId) {
+      const preset = VESSEL_PRESETS.find(p => p.id === presetId);
+      if (!preset) return;
+
+      activePresetId = preset.id;
+      inputs.vesselCount.value = preset.defaultCount;
+      inputs.targetCellsPerVessel.value = preset.targetCells;
+      inputs.finalVolPerVessel.value = preset.finalVol;
+
+      outputs.activePresetBadge.textContent = `선택됨: ${preset.shortName}`;
+      renderPresetButtons();
+      recalculateAll();
+    }
+
+    // =========================================================================
+    // 5. 칸별 개별 카운팅 (1~8칸) 아코디언 및 합산 로직
+    // =========================================================================
+    const toggleGridBtn = document.getElementById('toggleGridBtn');
+    const toggleGridLabel = document.getElementById('toggleGridLabel');
+    const gridCounterPanel = document.getElementById('gridCounterPanel');
+    const gridCellInputs = document.querySelectorAll('.grid-cell-input');
+    const gridSummaryText = document.getElementById('gridSummaryText');
+
+    toggleGridBtn.addEventListener('click', () => {
+      const isHidden = gridCounterPanel.classList.contains('hidden');
+      if (isHidden) {
+        gridCounterPanel.classList.remove('hidden');
+        toggleGridLabel.textContent = '칸별 개별 입력 닫기';
+      } else {
+        gridCounterPanel.classList.add('hidden');
+        toggleGridLabel.textContent = '칸별 개별 입력 (1~8칸) 열기';
+      }
+    });
+
+    function syncGridToMainInputs() {
+      let sum = 0;
+      let filledCount = 0;
+
+      gridCellInputs.forEach(inp => {
+        const raw = inp.value.trim();
+        if (raw !== '' && !isNaN(Number(raw)) && Number(raw) >= 0) {
+          sum += Number(raw);
+          filledCount += 1;
+        }
+      });
+
+      if (filledCount > 0) {
+        inputs.totalCountedCells.value = sum;
+        inputs.countedSquares.value = filledCount;
+        gridSummaryText.textContent = `총 ${filledCount}칸 계수됨 → 합계 ${formatInt(sum)} cells 자동 반영 중`;
+        recalculateAll();
+      } else {
+        gridSummaryText.textContent = '입력된 칸 없음 (직접 입력 모드)';
+      }
+    }
+
+    gridCellInputs.forEach(inp => {
+      inp.addEventListener('input', syncGridToMainInputs);
+    });
+
+    document.getElementById('clearGridBtn').addEventListener('click', () => {
+      gridCellInputs.forEach(inp => { inp.value = ''; });
+      gridSummaryText.textContent = '입력된 칸 없음 (직접 입력 모드)';
+    });
+
+    // =========================================================================
+    // 6. 핵심 통합 계산 로직 (실시간 수행)
+    // =========================================================================
+    function recalculateAll() {
+      // [A] 상단: 세포 카운팅 입력값 파싱
+      const totalCounted = Math.max(0, parseFloat(inputs.totalCountedCells.value) || 0);
+      const squares = Math.max(1, parseFloat(inputs.countedSquares.value) || 1);
+      const dilution = Math.max(0, parseFloat(inputs.dilutionFactor.value) || 0);
+      const suspensionVol = Math.max(0, parseFloat(inputs.totalSuspensionVol.value) || 0);
+      const viability = Math.max(0, Math.min(100, parseFloat(inputs.viabilityPct.value) || 0));
+      const factor = Math.max(0, parseFloat(inputs.hemocytometerFactor.value) || 0);
+      const recovery = Math.max(0, Math.min(100, parseFloat(inputs.recoveryPct.value) || 0));
+
+      // 카운팅 산출 공식
+      const avgPerSquare = totalCounted / squares;
+      const measuredConc = avgPerSquare * dilution * factor * (viability / 100);
+      const validTotalCells = measuredConc * suspensionVol * (recovery / 100);
+
+      // 상단 카운팅 요약 업데이트
+      outputs.avgCellsPerSquare.textContent = formatFloat(avgPerSquare, 1);
+      outputs.measuredConcentration.textContent = formatInt(measuredConc);
+      outputs.measuredConcSci.textContent = `${formatScientific(measuredConc)} cells/mL`;
+      outputs.validTotalCells.textContent = formatInt(validTotalCells);
+      outputs.validTotalCellsSci.textContent = `${formatScientific(validTotalCells)} cells`;
+
+      // [B] 중단: 목표 분주 조건 파싱
+      const vesselCount = Math.max(1, parseFloat(inputs.vesselCount.value) || 1);
+      const targetPerVessel = Math.max(0, parseFloat(inputs.targetCellsPerVessel.value) || 0);
+      const finalVolPerVessel = Math.max(0, parseFloat(inputs.finalVolPerVessel.value) || 0);
+      const bufferPct = Math.max(0, parseFloat(inputs.deadVolumePct.value) || 0);
+      const bufferMultiplier = 1 + (bufferPct / 100);
+
+      outputs.targetCellsSciHelper.textContent = `${formatScientific(targetPerVessel)} cells / 개`;
+
+      // 분주 계산 공식 (회수율이 반영된 유효 농도 기준)
+      const effectiveConc = measuredConc * (recovery / 100);
+      const pureReqCells = targetPerVessel * vesselCount;
+      const totalReqCells = pureReqCells * bufferMultiplier;
+      const totalMixVolMl = finalVolPerVessel * vesselCount * bufferMultiplier;
+
+      let requiredStockMl = 0;
+      if (effectiveConc > 0) {
+        requiredStockMl = totalReqCells / effectiveConc;
+      }
+      const requiredStockUl = requiredStockMl * 1000;
+      const requiredMediaMl = Math.max(0, totalMixVolMl - requiredStockMl);
+
+      // 잔여 세포 및 잔여 액량
+      const remainingCells = validTotalCells - totalReqCells;
+      const usableSuspensionVol = suspensionVol * (recovery / 100);
+      const remainingVol = usableSuspensionVol - requiredStockMl;
+
+      // [C] 우측 대시보드 수치 반영
+      outputs.outStockMl.textContent = formatFloat(requiredStockMl, 2);
+      outputs.outStockUl.textContent = formatInt(requiredStockUl);
+      outputs.outMediaMl.textContent = formatFloat(requiredMediaMl, 2);
+      outputs.outTotalMixMl.textContent = formatFloat(totalMixVolMl, 2);
+
+      outputs.outPureReqCells.textContent = `${formatInt(pureReqCells)} cells`;
+      outputs.outTotalReqCells.textContent = `${formatInt(totalReqCells)} cells`;
+
+      outputs.outRemainingCells.textContent = `${formatInt(remainingCells)} cells`;
+      outputs.outRemainingCells.className = remainingCells < 0
+        ? 'font-bold text-rose-600 tabular-nums'
+        : 'font-bold text-emerald-700 tabular-nums';
+
+      outputs.outRemainingVol.textContent = `${formatFloat(remainingVol, 2)} mL`;
+      outputs.outRemainingVol.className = remainingVol < 0
+        ? 'font-bold text-rose-600 tabular-nums'
+        : 'font-bold text-slate-800 tabular-nums';
+
+      // [D] 상태 진단 및 경고 배너 업데이트
+      const isZeroConc = effectiveConc <= 0;
+      const isInsufficientCells = totalReqCells > validTotalCells;
+      const isTooDilute = requiredStockMl > totalMixVolMl;
+
+      if (isZeroConc) {
+        setStatusBanner(
+          'error',
+          '⚠ 유효 세포 농도가 0입니다',
+          '카운팅한 세포 수, 희석 배수, 생존율, 회수율 값을 다시 확인해 주세요.'
+        );
+      } else if (isInsufficientCells) {
+        const shortage = formatInt(totalReqCells - validTotalCells);
+        setStatusBanner(
+          'error',
+          '⚠ 보유한 유효 세포 수가 부족합니다',
+          `필요 세포 수보다 약 ${shortage} cells 부족합니다. 분주 개수를 줄이거나 여유분(%)을 조정하세요.`
+        );
+      } else if (isTooDilute) {
+        setStatusBanner(
+          'warning',
+          '⚠ 세포 농도가 너무 묽습니다. 원심분리 후 농축(Resuspension)이 필요합니다',
+          `필요한 원본 세포액(${formatFloat(requiredStockMl, 2)} mL)이 목표 총 혼합액(${formatFloat(totalMixVolMl, 2)} mL)보다 많습니다.`
+        );
+      } else {
+        setStatusBanner(
+          'ok',
+          '✔ 정상: 바로 혼합 후 분주 가능합니다',
+          `총 ${vesselCount}개 용기에 개당 ${formatScientific(targetPerVessel)} cells씩 안정적으로 분주할 수 있습니다.`
+        );
+      }
+
+      // [E] 실험실 작업 지시문 생성
+      const mediaStr = formatFloat(requiredMediaMl, 2);
+      const stockMlStr = formatFloat(requiredStockMl, 2);
+      const stockUlStr = formatInt(requiredStockUl);
+      const perVesselVolStr = formatFloat(finalVolPerVessel, 2);
+
+      if (isZeroConc) {
+        outputs.labInstructionText.innerHTML = '유효 세포 농도가 계산되지 않았습니다. 상단 카운팅 수치를 먼저 입력해 주세요.';
+      } else if (isTooDilute) {
+        outputs.labInstructionText.innerHTML = `현재 농도가 묽어 새 배양액을 추가할 수 없습니다. 원본 세포 현탁액을 원심분리한 뒤 <strong class="text-amber-300">${formatFloat(totalMixVolMl, 2)} mL</strong> 이하의 배양액으로 재현탁(Resuspension)하여 분주하세요.`;
+      } else {
+        outputs.labInstructionText.innerHTML = `튜브에 새 배양액 <strong class="text-emerald-300">${mediaStr} mL</strong>를 먼저 넣고, 원본 세포액 <strong class="text-amber-300">${stockMlStr} mL (${stockUlStr} µL)</strong>를 넣어 잘 섞은 뒤 각 용기에 <strong class="text-sky-300">${perVesselVolStr} mL</strong>씩 분주하세요.`;
+      }
+    }
+
+    function setStatusBanner(type, title, desc) {
+      const banner = outputs.statusBanner;
+      const icon = outputs.statusIcon;
+      outputs.statusTitle.textContent = title;
+      outputs.statusDesc.textContent = desc;
+
+      if (type === 'error') {
+        banner.className = 'rounded-2xl p-3.5 border flex items-start gap-3 bg-rose-50 border-rose-300 text-rose-950';
+        icon.className = 'w-6 h-6 rounded-full bg-rose-600 text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5';
+        icon.textContent = '!';
+      } else if (type === 'warning') {
+        banner.className = 'rounded-2xl p-3.5 border flex items-start gap-3 bg-amber-50 border-amber-300 text-amber-950';
+        icon.className = 'w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5';
+        icon.textContent = '!';
+      } else {
+        banner.className = 'rounded-2xl p-3.5 border flex items-start gap-3 bg-emerald-50 border-emerald-300 text-emerald-950';
+        icon.className = 'w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5';
+        icon.textContent = '✔';
+      }
+    }
+
+    // =========================================================================
+    // 7. 이벤트 리스너 연결 (입력 변경, 여유분 퀵버튼, 지시문 복사, 초기화)
+    // =========================================================================
+    Object.values(inputs).forEach(inputEl => {
+      inputEl.addEventListener('input', () => {
+        // 사용자가 직접 목표 값을 바꾼 경우 프리셋 배지 표시 보완
+        if (inputEl === inputs.targetCellsPerVessel || inputEl === inputs.finalVolPerVessel) {
+          const currentPreset = VESSEL_PRESETS.find(p => p.id === activePresetId);
+          if (currentPreset) {
+            const isModified =
+              Number(inputs.targetCellsPerVessel.value) !== currentPreset.targetCells ||
+              Number(inputs.finalVolPerVessel.value) !== currentPreset.finalVol;
+            outputs.activePresetBadge.textContent = isModified
+              ? `기준: ${currentPreset.shortName} (사용자 수정됨)`
+              : `선택됨: ${currentPreset.shortName}`;
+          }
+        }
+        updateBufferButtonStyles();
+        recalculateAll();
+      });
+    });
+
+    // 여유분 빠른 선택 버튼 (0%, 10%, 15%)
+    const bufferQuickBtns = document.querySelectorAll('.buffer-quick-btn');
+    function updateBufferButtonStyles() {
+      const currentVal = Number(inputs.deadVolumePct.value);
+      bufferQuickBtns.forEach(btn => {
+        const btnVal = Number(btn.dataset.buffer);
+        if (btnVal === currentVal) {
+          btn.className = 'buffer-quick-btn px-2 py-2 text-xs font-semibold rounded-lg bg-emerald-600 border border-emerald-600 text-white';
+        } else {
+          btn.className = 'buffer-quick-btn px-2 py-2 text-xs font-semibold rounded-lg bg-white border border-slate-300 hover:bg-slate-100 text-slate-700';
+        }
+      });
+    }
+
+    bufferQuickBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        inputs.deadVolumePct.value = btn.dataset.buffer;
+        updateBufferButtonStyles();
+        recalculateAll();
+      });
+    });
+
+    // 작업 지시문 원클릭 복사 (iFrame 호환 execCommand 방식 적용)
+    document.getElementById('copyInstructionBtn').addEventListener('click', () => {
+      const textToCopy = outputs.labInstructionText.innerText.trim();
+      const tempTextarea = document.createElement('textarea');
+      tempTextarea.value = textToCopy;
+      tempTextarea.style.position = 'fixed';
+      tempTextarea.style.opacity = '0';
+      document.body.appendChild(tempTextarea);
+      tempTextarea.select();
+      try {
+        document.execCommand('copy');
+        showToast('작업 지시문이 클립보드에 복사되었습니다.');
+      } catch (err) {
+        showToast('복사에 실패했습니다. 텍스트를 직접 선택해 복사해 주세요.');
+      }
+      document.body.removeChild(tempTextarea);
+    });
+
+    // 기본값 초기화 버튼
+    document.getElementById('resetBtn').addEventListener('click', () => {
+      inputs.totalCountedCells.value = 216;
+      inputs.countedSquares.value = 4;
+      inputs.dilutionFactor.value = 4;
+      inputs.totalSuspensionVol.value = 15;
+      inputs.viabilityPct.value = 100;
+      inputs.hemocytometerFactor.value = 10000;
+      inputs.recoveryPct.value = 100;
+      inputs.deadVolumePct.value = 10;
+
+      gridCellInputs.forEach(inp => { inp.value = ''; });
+      gridSummaryText.textContent = '입력된 칸 없음 (직접 입력 모드)';
+
+      updateBufferButtonStyles();
+      applyPreset('dish-150');
+      showToast('모든 입력값이 기본 예시값으로 초기화되었습니다.');
+    });
+
+    // =========================================================================
+    // 8. 초기 실행
+    // =========================================================================
+    window.addEventListener('DOMContentLoaded', () => {
+      renderPresetButtons();
+      updateBufferButtonStyles();
+      recalculateAll();
+    });
+  </script>
+</body>
+</html>
